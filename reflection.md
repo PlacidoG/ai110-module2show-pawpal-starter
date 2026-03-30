@@ -5,12 +5,23 @@
 **a. Initial design**
 
 - Briefly describe your initial UML design.
+: A user should have the capability to register a pet with an account that contains 
+there backround information and administering there daily rountines if they are 
+alone. So if a owner is not around there pet, they can use pawpal to track pet care
+tasks, schedule a walk and produce a daily plan and explain why it chose that plan
+
+
 - What classes did you include, and what responsibilities did you assign to each?
+: For attrubutes-  A user input personal informatoin about there pet. Information includes 
+there Name, species, age, weight,any medical procedures/persciption, future appointments, overall healthn and walk tracker. Overall health means there physcial status, appitite, and mental well being. The app will track there analytics for daily routines. 
+
+- For methods- PawPal can develop a daily plan and explain why it chose that plan for a certain pet. However owners are able to manually change any information that they might pefer for there pet over PawPals suggestions for 
 
 **b. Design changes**
 
 - Did your design change during implementation?
 - If yes, describe at least one change and why you made it.
+: Yes, my design changed during implementation when I added explicit task-to-pet relationships and a schedule-entry model with real timestamps instead of only a list of tasks. I made this change so the app could support multiple pets correctly, store daily plans by date, and generate a true calendar-like schedule with clear timing and conflict handling.
 
 ---
 
