@@ -238,13 +238,76 @@ class Owner:
 			raise ValueError("Availability cannot be negative")
 		self.available_minutes_per_day = minutes
 
+	def _next_due_for_recurrence(self, task: Task) -> datetime | None:
+		"""Return the next due datetime for recurring tasks when available."""
+		if task.due_by is None:
+			return None
+
+		recurrence = task.recurrence.strip().lower()
+		if recurrence == "daily":
+			return task.due_by + timedelta(days=1)
+		if recurrence == "weekly":
+			return task.due_by + timedelta(days=7)
+		return None
+
+	def _build_follow_up_task_id(self, pet: Pet, source_task: Task, next_due: datetime | None) -> str:
+		"""Build a unique follow-up task ID derived from the source task."""
+		suffix = next_due.strftime("%Y%m%d") if next_due is not None else "next"
+		base_id = f"{source_task.task_id}-next-{suffix}"
+		existing_ids = {task.task_id for task in pet.tasks}
+		if base_id not in existing_ids:
+			return base_id
+
+		counter = 2
+		candidate_id = f"{base_id}-{counter}"
+		while candidate_id in existing_ids:
+			counter += 1
+			candidate_id = f"{base_id}-{counter}"
+		return candidate_id
+
+	def _create_recurring_follow_up(self, pet: Pet, task: Task) -> None:
+		"""Create the next task instance for daily/weekly recurring tasks."""
+		recurrence = task.recurrence.strip().lower()
+		if recurrence not in {"daily", "weekly"}:
+			return
+
+		next_due = self._next_due_for_recurrence(task)
+		new_task_id = self._build_follow_up_task_id(pet, task, next_due)
+
+		next_window = None
+		if task.preferred_window is not None:
+			next_window = TimeWindow(
+				start_time=task.preferred_window.start_time,
+				end_time=task.preferred_window.end_time,
+			)
+
+		pet.add_task(
+			Task(
+				task_id=new_task_id,
+				pet_id=task.pet_id,
+				title=task.title,
+				category=task.category,
+				duration_minutes=task.duration_minutes,
+				priority=task.priority,
+				preferred_window=next_window,
+				due_by=next_due,
+				recurrence=task.recurrence,
+				requires_owner=task.requires_owner,
+			)
+		)
+
 	def mark_task_complete(self, task_id: str) -> None:
-		"""Mark a task complete across all pets and record its ID."""
+		"""Mark a task complete and create a follow-up when it recurs."""
+		if task_id in self.completed_task_ids:
+			return
+
 		self.completed_task_ids.add(task_id)
 		for pet in self.pets:
 			for task in pet.tasks:
 				if task.task_id == task_id:
 					task.mark_completed()
+					self._create_recurring_follow_up(pet, task)
+					return
 
 	def store_daily_plan(self, plan_date: date, entries: list[ScheduleEntry]) -> None:
 		"""Store a day's schedule entries sorted by start time."""
