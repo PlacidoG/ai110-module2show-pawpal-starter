@@ -434,23 +434,35 @@ class Scheduler:
 		available_minutes: int,
 	) -> list[ScheduleEntry]:
 		"""Filter entries to remove overlaps and enforce daily minute limits."""
+		resolved, _ = self.resolve_conflicts_with_feedback(entries, available_minutes)
+		return resolved
+
+	def resolve_conflicts_with_feedback(
+		self,
+		entries: list[ScheduleEntry],
+		available_minutes: int,
+	) -> tuple[list[ScheduleEntry], list[ScheduleEntry]]:
+		"""Return scheduled entries and entries dropped for time/conflict constraints."""
 		if available_minutes <= 0:
-			return []
+			return [], list(entries)
 
 		resolved: list[ScheduleEntry] = []
+		dropped: list[ScheduleEntry] = []
 		used_minutes = 0
 
 		for entry in sorted(entries, key=lambda item: item.start_at):
 			entry_minutes = entry.duration_minutes()
 			if used_minutes + entry_minutes > available_minutes:
+				dropped.append(entry)
 				continue
 			if resolved and entry.overlaps_with(resolved[-1]):
+				dropped.append(entry)
 				continue
 
 			resolved.append(entry)
 			used_minutes += entry_minutes
 
-		return resolved
+		return resolved, dropped
 
 	def explain_plan(self, plan: list[ScheduleEntry], owner: Owner, pet: Pet) -> str:
 		"""Return a human-readable explanation of the generated plan."""
